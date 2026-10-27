@@ -84,6 +84,17 @@ python backend\api.py
 The API listens on `http://127.0.0.1:8000` by default. Keep this terminal running
 while using the frontend.
 
+## Deploy the frontend to Netlify
+
+The root `netlify.toml` configures Netlify to install locked dependencies, including
+Vite and other development dependencies, in `frontend` before running its Vite
+build and publishing `frontend/dist`. A fallback serves `index.html`
+for direct visits to application URLs.
+
+The Python backend is a separate service. The Vite `/api` proxy only runs during
+local development; production receipt parsing and invoicing require a deployed
+backend and production API routing.
+
 ## Workflow
 
 Upload a JPEG, PNG, or WEBP receipt (up to 10 MB) to extract receipt data with
