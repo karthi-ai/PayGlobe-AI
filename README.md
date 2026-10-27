@@ -91,9 +91,23 @@ Vite and other development dependencies, in `frontend` before running its Vite
 build and publishing `frontend/dist`. A fallback serves `index.html`
 for direct visits to application URLs.
 
-The Python backend is a separate service. The Vite `/api` proxy only runs during
-local development; production receipt parsing and invoicing require a deployed
-backend and production API routing.
+Public hosting now includes a Netlify Function in `frontend/netlify/functions`
+for `/api/receipts/parse`, `/api/invoices/preview`, and `/api/invoices/drafts`.
+The public demo is enabled by default: click **Try sample receipt**, assign items
+to payers, preview the split, and simulate drafts. No Gemini or PayPal credentials
+are required. Optional images stay in the browser and are not analyzed. Demo
+drafts are not persisted or created in PayPal. Exchange rates are illustrative.
+
+To exercise the hosted demo locally, run `netlify dev --port 8889` from the
+repository root. To use the separate Python backend for real receipt extraction
+locally, set `VITE_DEMO_MODE=false` in `frontend/.env.local`, run the backend, and
+start Vite with `npm run dev`. The Python backend's demo setting is independent
+of the hosted demo. The hosted function always runs in demo mode; real extraction
+and PayPal integration on public hosting still require a separate implementation.
+
+If a public URL still returns an API 404, publish the latest deployment containing
+the function as well as the frontend. Changing the local Python configuration
+does not update a deployed site.
 
 ## Workflow
 
