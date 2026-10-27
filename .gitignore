@@ -1,0 +1,21 @@
+# Secrets and environment files
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Frontend dependencies and builds
+node_modules/
+dist/
+
+# Editor and operating system files
+.DS_Store
+Thumbs.db
