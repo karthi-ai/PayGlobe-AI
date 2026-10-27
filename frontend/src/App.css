@@ -60,6 +60,10 @@ h1 span { color: var(--green); }
 .feedback > span { flex: 1; }
 .feedback button { padding: 3px; display: grid; place-items: center; color: currentColor; border: 0; background: transparent; }
 .feedback-error { color: #9d4536; border-color: #e7b6aa; background: #fff0e9; }
+.demo-banner { display: flex; align-items: flex-start; gap: 12px; padding: 16px; margin-bottom: 18px; color: var(--green-dark); background: var(--green-soft); border: 1px solid #bfd4c2; border-radius: 5px; }
+.demo-banner > svg { flex-shrink: 0; margin-top: 2px; }
+.demo-banner strong { font-size: 13px; }
+.demo-banner p { margin: 5px 0 0; font-size: 12px; line-height: 1.6; }
 .feedback-success { color: #315d46; border-color: #bfd4c2; background: #eaf3e9; }
 
 .workbench { display: grid; grid-template-columns: minmax(0, .92fr) minmax(0, 1.08fr); align-items: start; gap: 17px; }

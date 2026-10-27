@@ -20,6 +20,7 @@ import {
 import './App.css';
 
 const currencies = ['USD', 'EUR', 'GBP', 'CAD', 'INR'];
+const demoMode = import.meta.env.VITE_DEMO_MODE !== 'false';
 
 function money(value, currency) {
   try {
@@ -35,9 +36,12 @@ function money(value, currency) {
 
 async function requestJson(url, options) {
   const response = await fetch(url, options);
-  const data = await response.json().catch(() => ({}));
+  if (!response.headers.get('content-type')?.includes('application/json')) {
+    throw new Error('The hosted API is unavailable. Deploy the site with its Netlify Functions and try again.');
+  }
+  const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.error || `Request failed (${response.status})`);
+    throw new Error(data.error || (response.status === 404 ? 'This API route is not deployed. Publish the latest site with Netlify Functions.' : `Request failed (${response.status})`));
   }
   return data;
 }
@@ -85,7 +89,7 @@ export default function App() {
 
   const parseReceipt = async (event) => {
     event.preventDefault();
-    if (!file) {
+    if (!file && !demoMode) {
       setError('Choose a receipt image to continue.');
       return;
     }
@@ -94,7 +98,7 @@ export default function App() {
     setNotice('');
     try {
       const formData = new FormData();
-      formData.append('file', file);
+      if (file && !demoMode) formData.append('file', file);
       const data = await requestJson('/api/receipts/parse', {
         method: 'POST',
         body: formData,
@@ -103,9 +107,9 @@ export default function App() {
       setPayers([{ id: crypto.randomUUID(), email: '', currency: data.currency, items: [] }]);
       setInvoices([]);
       setCreated([]);
-      setNotice('Receipt parsed. Review the line items, then assign each item to a payer.');
+      setNotice(demoMode ? 'Sample receipt loaded. Uploaded images are not read in demo mode. Assign the sample items to try the split.' : 'Receipt parsed. Review the line items, then assign each item to a payer.');
     } catch (requestError) {
-      setError(`${requestError.message}. Check that the backend is running and GEMINI_API_KEY is configured.`);
+      setError(requestError.message);
     } finally {
       setBusy('');
     }
@@ -195,9 +199,9 @@ export default function App() {
         }),
       });
       setCreated(data);
-      setNotice(`${data.length} sandbox draft${data.length === 1 ? '' : 's'} created.`);
+      setNotice(demoMode ? `${data.length} demo draft${data.length === 1 ? '' : 's'} simulated. Nothing was created in PayPal or sent to recipients. Demo drafts are not saved.` : `${data.length} sandbox draft${data.length === 1 ? '' : 's'} created.`);
     } catch (requestError) {
-      setError(`${requestError.message}. Check your PayPal sandbox credentials in backend/.env.`);
+      setError(requestError.message);
     } finally {
       setBusy('');
     }
@@ -224,7 +228,7 @@ export default function App() {
         </a>
         <div className="topbar-right">
           <span className="workspace-label">RECEIPT DESK</span>
-          <span className="sandbox-badge"><span />SANDBOX</span>
+          <span className="sandbox-badge"><span />{demoMode ? 'PUBLIC DEMO' : 'SANDBOX'}</span>
           <button className="icon-button reset-button" onClick={reset} title="Start a new receipt" aria-label="Start a new receipt">
             <RotateCcw size={16} />
           </button>
@@ -243,6 +247,13 @@ export default function App() {
           <span>PAY</span>
         </div>
       </section>
+
+      {demoMode && (
+        <div className="demo-banner">
+          <Sparkles size={18} aria-hidden="true" />
+          <div><strong>Try the public demo</strong><p>Use a sample receipt, split items, and simulate drafts. No Gemini or PayPal account needed. Images are not uploaded or analyzed; demo drafts disappear when you reload.</p></div>
+        </div>
+      )}
 
       {(error || notice) && (
         <div className={`feedback ${error ? 'feedback-error' : 'feedback-success'}`} role={error ? 'alert' : 'status'}>
@@ -295,10 +306,10 @@ export default function App() {
                   {file ? 'Replace' : 'Browse'}
                 </button>
               </div>
-              <div className="privacy-note"><FileImage size={14} /> Images are processed by Gemini and removed after parsing.</div>
-              <button className="primary-button parse-button" type="submit" disabled={!file || busy === 'parse'}>
+              <div className="privacy-note"><FileImage size={14} /> {demoMode ? 'Optional image preview only. Demo always uses the Cafe Milano sample.' : 'Images are processed by Gemini for receipt extraction.'}</div>
+              <button className="primary-button parse-button" type="submit" disabled={(!file && !demoMode) || busy === 'parse'}>
                 {busy === 'parse' ? <LoaderCircle className="spin" size={17} /> : <Sparkles size={17} />}
-                {busy === 'parse' ? 'Reading receipt…' : 'Read receipt'}
+                {busy === 'parse' ? 'Loading receipt…' : demoMode ? 'Try sample receipt' : 'Read receipt'}
                 <ArrowUpRight size={16} className="button-end-icon" />
               </button>
             </form>
@@ -325,7 +336,7 @@ export default function App() {
                 <div><span>RECEIPT TOTAL</span><strong>{money(receipt.total, receipt.currency)}</strong></div>
                 <button className="text-button" onClick={reset}>Change receipt</button>
               </div>
-              <p className="receipt-footnote">Check extracted details against the original before creating drafts.</p>
+              <p className="receipt-footnote">{demoMode ? 'Sample data only. Tax and tip are listed separately so you can assign the full total.' : 'Check extracted details against the original before creating drafts.'}</p>
             </div>
           )}
         </section>
@@ -425,7 +436,7 @@ export default function App() {
             </div>
             <span className={`preview-state ${created.length ? 'created-state' : ''}`}>
               {created.length ? <CheckCircle2 size={15} /> : <span className="preview-dot" />}
-              {created.length ? 'DRAFTS CREATED' : 'PREVIEW ONLY'}
+              {created.length ? (demoMode ? 'DEMO SIMULATION' : 'DRAFTS CREATED') : 'PREVIEW ONLY'}
             </span>
           </div>
           <div className="invoice-table">
@@ -441,11 +452,11 @@ export default function App() {
             ))}
           </div>
           <div className="preview-footer">
-            <span><CircleAlert size={14} />Rates are indicative. Confirm the final amount in PayPal.</span>
+            <span><CircleAlert size={14} />{demoMode ? 'Illustrative rates. Demo drafts are not saved or sent.' : 'Rates are indicative. Confirm the final amount in PayPal.'}</span>
             {!created.length && (
               <button className="create-button" onClick={createDrafts} disabled={busy === 'drafts'}>
                 {busy === 'drafts' ? <LoaderCircle className="spin" size={16} /> : <Send size={15} />}
-                {busy === 'drafts' ? 'Creating drafts…' : 'Create sandbox drafts'}
+                {busy === 'drafts' ? 'Preparing drafts…' : demoMode ? 'Simulate demo drafts' : 'Create sandbox drafts'}
               </button>
             )}
           </div>
@@ -454,7 +465,7 @@ export default function App() {
 
       <footer className="app-footer">
         <span>PAYGLOBE AI <i>·</i> RECEIPT SPLIT WORKSPACE</span>
-        <span><span className="footer-status" />Backend connection required</span>
+        <span><span className="footer-status" />{demoMode ? 'Public demo · hosted API' : 'Sandbox API required'}</span>
       </footer>
     </main>
   );
